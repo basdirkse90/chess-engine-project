@@ -100,7 +100,7 @@ class BoardRep:
                     board.piece_count[pieceType] += 1
                     f += 1
             r -= 1
-                    # TODO: Update piece_list or create function that does it
+            # TODO: Update piece_list or create function that does it
 
         board.side_to_move = (lines[1] == 'b')
 
@@ -136,8 +136,66 @@ class BoardRep:
                     res += self.PIECE_TO_FEN[pieceType] + ' '
         return res
 
+    def get_fen(self):
+        res = ""
+        for r in range(7, -1, -1):
+            number_of_whites = 0
+            for f in range(0, 8):
+                piece = self.square_list[r*8+f]
+                if piece > 0:
+                    if number_of_whites > 0:
+                        res += str(number_of_whites)
+                    res += self.PIECE_TO_FEN[piece]
+                    number_of_whites = 0
+                else:
+                    number_of_whites += 1
+            if number_of_whites > 0:
+                res += str(number_of_whites)
+            res += "/"
+        res = res[0:-1]
+
+        if self.side_to_move:
+            res += " b "
+        else:
+            res += " w "
+
+        if self.castling_rights == 0:
+            res += "-"
+        else:
+            t = '{0:04b}'.format(self.castling_rights)
+            if t[3] == '1':
+                res += "K"
+            if t[2] == '1':
+                res += "Q"
+            if t[1] == '1':
+                res += "k"
+            if t[0] == '1':
+                res += "q"
+        if self.en_passant_square is None:
+            res += " -"
+        else:
+            f = self.en_passant_square % 8
+            r = self.en_passant_square // 8
+            res += " " + chr(f+97) + str(r+1)
+
+        res += " " + str(self.half_move_count) + " " + str(self.full_move_count)
+        return res
+
 
 if __name__ == "__main__":
-    a = BoardRep.read_fen();
+    a = BoardRep.read_fen()
     print(a)
+    b = BoardRep.read_fen("4r1k1/5ppp/b5r1/p1b1n1K1/2p5/6P1/P2N2BP/1R1QR3 w - - 0 1")
+    print()
+    print()
+    print(b)
+
+    print()
+    print()
+    print(b.square_list)
+    print(b.get_fen())
+    print()
+    print(a.square_list)
+    print(a.get_fen())
+
 
