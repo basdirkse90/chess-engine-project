@@ -1,1 +1,1 @@
-from .Board_and_moves import BoardRep
+from .Board_and_moves import *

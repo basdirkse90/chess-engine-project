@@ -1,43 +1,24 @@
 import numpy as np
 import random
 from ast import literal_eval
+from itertools import product
 
 
 class BoardRep:
-    # PieceTypes Constants
-    # Bits 2-0 -- Piece type
-        # 0 -- Empty
-        # 1 -- White Pawn
-        # 2 -- Black Pawn
-        # 3 -- Knight
-        # 4 -- Bishop
-        # 5 -- Rook
-        # 6 -- Queen
-        # 7 -- King
-    # Bit 3 -- Piece color
-        # 0 -- White
-        # 1 -- Black
-    WP = 1
-    WN = 3
-    WB = 4
-    WR = 5
-    WQ = 6
-    WK = 7
-    BP = 10
-    BN = 11
-    BB = 12
-    BR = 13
-    BQ = 14
-    BK = 15
+    # Constants that relate square name to square number:
+    #   a1 = 0, a2 = 1, a3 = 2, ..., a2 = 8, b2 = 9, ... h8 = 63
+    NUM_TO_SQUARE = [f + r for r, f in product('12345678', 'abcdefgh')]
+    SQUARE_TO_NUM = {v: k for k, v in enumerate(NUM_TO_SQUARE)}
+    SQUARE_TO_NUM['-'] = None
 
-    FEN_TO_PIECE = {
-        'P':  1, 'N':  3, 'B':  4, 'R':  5, 'Q':  6, 'K': 7,
-        'p': 10, 'n': 11, 'b': 12, 'r': 13, 'q': 14, 'k': 15
-    }
-    PIECE_TO_FEN = {v: k for k, v in FEN_TO_PIECE.items()}
-    PIECE_TO_UNICODE = {
-        1:  '\u2659',  3: '\u2658',  4: '\u2657',  5: '\u2656',  6: '\u2655',  7: '\u2654',
-        10: '\u265F', 11: '\u265E', 12: '\u265D', 13: '\u265C', 14: '\u265B', 15: '\u265A'
+    # Pieces are identified by their FEN character:
+    #   Capital for white:    P, N, B, R, Q, K  (pawn, knight, bisschop, rook, queen, king)
+    #   Lowercase for black:  p, n, b, r, q, k  (pawn, knight, bisschop, rook, queen, king)
+    PIECES = 'PNBRQKpnbrqk'
+
+    FEN_TO_UNICODE = {
+        'P': '\u265F', 'N': '\u265E', 'B': '\u265D', 'R': '\u265C', 'Q': '\u265B', 'K': '\u265A',
+        'p': '\u2659', 'n': '\u2658', 'b': '\u2657', 'r': '\u2656', 'q': '\u2655', 'k': '\u2654'
     }
 
     # Initialize empty board
@@ -46,46 +27,25 @@ class BoardRep:
 
         Parameters:
         side_to_move -- (False = white, True = black)
-        castling_rights -- (bit 0: White short,
-                            bit 1: White long,
-                            bit 2: Black short,
-                            bit 3: Black long)
+        castling_rights -- [White short, white long, black short, black long]
         en_passant_square -- Target square for en passant capture ((0-63) or None)
         half_move_count -- Counts half moves since last capture or pawn push
         full_move_count -- Counts full moves after black moves
-        piece_list -- 34x5 array containing piece information for each piece on board
-            Rows encode pieces:
-                 0- 7 -- White Pawns            16-23 -- Black Pawns
-                 8- 9 -- White Knights          24-25 -- Black Knights
-                10-11 -- White Bishops (w-b)    26-27 -- Black Bishops  (w-b)
-                12-13 -- White Rooks            28-29 -- Black Rooks
-                14    -- White Queen            30    -- Black Queen
-                15    -- White King             31    -- Black King
-                32    -- White extra promotion  33    -- Black extra promotion
-            Columns encode piece information:
-                0 -- existence: 0 or 1 (0 is not existent, all other values are ignored)
-                1 -- position: 0-63 (SquareNumbers)
-                2 -- piece type: 0-15 (PieceTypes)
-                3 -- mobility, the number of moves the piece has (including captures)
-                4 -- lowest valued attacker: 0-15 (PieceTypes)
-                5 -- lowest valued defender: 0-15 (PieceTypes)
-        piece_count -- 16x1 array indexed by PieceTypes counting the number of each piece
-        square_list -- 64x3 array  containing square information for each square,
-            Rows indexed by SquareNumbers [0 <-> a1, 1 <-> b1, ..., 8 <-> a2, ... etc]
-            Columns:
-                0 -- PieceType if occupied by piece, otherwise 0
-                1 -- lowest valued attacker: 0-15 (PieceTypes)
-                2 -- lowest valued defender: 0-15 (PieceTypes)
+        piece_list -- Simple list of piece objects that are in existence
+        piece_count -- Dict of pieces and their counts
+        square_list -- List of length 64 with each piece object at the square it occupies (empty squares have None)
+        attack_map
+        defence_map
 
         """
         self.side_to_move = None
-        self.castling_rights = 0
+        self.castling_rights = [False]*4
         self.en_passant_square = None
         self.half_move_count = 0
         self.full_move_count = 1
-        self.piece_list = np.zeros((34, 6), dtype=np.uint8)
-        self.piece_count = np.zeros(16, dtype=np.uint8)
-        self.square_list = np.zeros((64, 3), dtype=np.uint8)
+        self.piece_list = []
+        self.piece_count = {key: 0 for key in self.PIECES}
+        self.square_list = [None]*64
 
     @classmethod
     def read_fen(cls, fen="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"):
@@ -96,128 +56,30 @@ class BoardRep:
         for rank in ranks:
             f = 0
             for piece in rank:
-                # Try if character is a number and skip empty squares
-                i = r*8 + f
-                try:
-                    x = int(piece)
-                    f += x
-                except ValueError:
-                    pieceType = cls.FEN_TO_PIECE[piece]
-                    board.square_list[i, 0] = pieceType
-                    board.piece_count[pieceType] += 1
+                if piece in cls.PIECES:
+                    pos = r*8+f
+                    newpiece = Piece(piecetype=piece, position=pos)
+                    board.square_list[pos] = newpiece
+                    board.piece_list.append(newpiece)
+                    board.piece_count[piece] += 1
                     f += 1
+                else:
+                    f += int(piece)
             r -= 1
 
-        # build square list with info
-        for i in range(64):
-            piece = board.square_list[i, 0]
-            r = i // 8
-            f = i % 8
-
-            # positions 0-7 for white pawns and 16-23 for black pawns
-            if piece == cls.WP or piece == cls.BP:
-                j = f + piece // 8 * 16
-
-                # Try to put on correct bin for each file
-                succeeded = False
-                k = 0
-                while not succeeded:
-                    if 0 <= f+k < 8 and board.piece_list[j + k, 0] == 0:
-                        board.piece_list[j+k, 0] = 1
-                        board.piece_list[j+k, 1] = i
-                        board.piece_list[j+k, 2] = piece
-                        succeeded = True
-                    if k > 8:
-                        raise IOError("Only the standard piece set is supported (with 1 possible extra promotion)")
-                    if k > 0:
-                        k = -k
-                    else:
-                        k = -k + 1
-
-            # positions 8-9   for white knights and 24-25 for black knights
-            # positions 12-13 for white rooks   and 28-29 for black knights
-            # piecetypes 3/11 knights, 5/13 rooks
-            if piece in [cls.WN, cls.WR, cls.BN, cls.BR]:
-                j = piece // 8 * 16
-                if piece in [cls.WN, cls.BN]:
-                    j += 8
-                else:
-                    j += 12
-
-                if board.piece_list[j, 0] == 0:
-                    pos = j
-                elif board.piece_list[j+1, 0] == 0:
-                    pos = j+1
-                elif board.piece_list[32, 0] == 0 and piece in [cls.WN, cls.WR]:
-                    pos = 32
-                elif board.piece_list[33, 0] == 0 and piece in [cls.BN, cls.BR]:
-                    pos = 33
-                else:
-                    raise IOError("Only the standard piece set is supported (with 1 possible extra promotion)")
-
-                board.piece_list[pos, 0] = 1
-                board.piece_list[pos, 1] = i
-                board.piece_list[pos, 2] = piece
-
-            # 10-11 -- White Bishops(w-b)     26-27 -- Black Bishops(w-b)
-            # bischops can be sorted by color
-            if piece == cls.WB or piece == cls.BB:
-                j = piece // 8
-                c = (r+f+1) % 2
-
-                if board.piece_list[10 + j*16 + c, 0] == 0:
-                    board.piece_list[10 + j*16 + c, 0] = 1
-                    board.piece_list[10 + j*16 + c, 1] = i
-                    board.piece_list[10 + j*16 + c, 2] = piece
-                elif board.piece_list[32+j, 0] == 0:
-                    board.piece_list[32+j, 0] = 1
-                    board.piece_list[32+j, 1] = i
-                    board.piece_list[32+j, 2] = piece
-                else:
-                    raise IOError("Only the standard piece set is supported (with 1 possible extra promotion)")
-
-            # Queens for slot 14 or 30
-            # Kings  for slot 15 or 31
-            if piece in [cls.WQ, cls.WK, cls.BQ, cls.BK]:
-                j = piece // 8
-                pos = 14 + j * 16
-                if piece == cls.WK or piece == cls.BK:
-                    pos += 1
-
-                if board.piece_list[pos, 0] == 0:
-                    board.piece_list[pos, 0] = 1
-                    board.piece_list[pos, 1] = i
-                    board.piece_list[pos, 2] = piece
-                # only 1 king
-                elif board.piece_list[32 + j, 0] == 0 and piece in [cls.WQ, cls.BQ]:
-                    board.piece_list[32 + j, 0] = 1
-                    board.piece_list[32 + j, 1] = i
-                    board.piece_list[32 + j, 2] = piece
-                else:
-                    raise IOError("Only the standard piece set is supported (with 1 possible extra promotion)")
-
-        # TODO: Update piece_list once move generation is implemented
-        # TODO: Update square_list once move generation is implemented
+        # TODO: Make attack_map once move generation is implemented
+        # TODO: Make defence_map once move generation is implemented
+        # TODO: Calculate piece mobility once move generation is implemented
 
         board.side_to_move = (lines[1] == 'b')
 
-        for castle_opts in lines[2]:
-            if castle_opts == 'K':
-                board.castling_rights += 1
-            if castle_opts == 'Q':
-                board.castling_rights += 2
-            if castle_opts == 'k':
-                board.castling_rights += 4
-            if castle_opts == 'q':
-                board.castling_rights += 8
+        for i, opt in enumerate('KQkq'):
+            board.castling_rights[i] = opt in lines[2]
 
-        if lines[3] != '-':
-            f = ord(lines[3][0]) - 97
-            r = int(lines[3][1]) - 1
-            board.en_passant_square = r*8 + f
-
+        board.en_passant_square = cls.SQUARE_TO_NUM[lines[3]]
         board.half_move_count = int(lines[4])
         board.full_move_count = int(lines[5])
+
         return board
 
     def __str__(self):
@@ -226,23 +88,29 @@ class BoardRep:
             for f in range(8):
                 if f == 0 and r < 7:
                     res += '\n'
-                pieceType = self.square_list[r*8+f, 0]
-                if pieceType == 0:
+                piece = self.square_list[r*8+f]
+                if piece is None:
                     res += '. '
                 else:
-                    res += self.PIECE_TO_FEN[pieceType] + ' '
+                    res += piece.piecetype + ' '
         return res
+
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            return self.__dict__ == other.__dict__
+        else:
+            return False
 
     def get_fen(self):
         res = ""
         for r in range(7, -1, -1):
             number_of_empty = 0
             for f in range(0, 8):
-                piece = self.square_list[r*8+f, 0]
-                if piece > 0:
+                piece = self.square_list[r*8+f]
+                if piece is not None:
                     if number_of_empty > 0:
                         res += str(number_of_empty)
-                    res += self.PIECE_TO_FEN[piece]
+                    res += piece.piecetype
                     number_of_empty = 0
                 else:
                     number_of_empty += 1
@@ -256,99 +124,187 @@ class BoardRep:
         else:
             res += " w "
 
-        if self.castling_rights == 0:
-            res += "-"
-        else:
-            t = '{0:04b}'.format(self.castling_rights)
-            if t[3] == '1':
-                res += "K"
-            if t[2] == '1':
-                res += "Q"
-            if t[1] == '1':
-                res += "k"
-            if t[0] == '1':
-                res += "q"
+        castle = ''
+        for i, opt in enumerate('KQkq'):
+            if self.castling_rights[i]:
+                castle += opt
+        if len(castle) == 0:
+            castle = '-'
+        res += castle
+
         if self.en_passant_square is None:
             res += " -"
         else:
-            f = self.en_passant_square % 8
-            r = self.en_passant_square // 8
-            res += " " + chr(f+97) + str(r+1)
+            res += " " + self.NUM_TO_SQUARE[self.en_passant_square]
 
         res += " " + str(self.half_move_count) + " " + str(self.full_move_count)
+
         return res
 
-    def pseudolegal_move(self):
+    def generate_pseudolegal_moves(self):
         moves = []
         for i in range(64):
+            if self.square_list[i] is None:
+                continue
+
             r = i // 8
             f = i % 8
             color = int(self.side_to_move)      # white = 0, black = 1
 
-            # Pawn moves
-            if self.square_list[i, 0] == self.WP + (color * 9):
-
-                if r == 6 - 5*color:  # promote
+            # White Pawn moves
+            if self.square_list[i].piecetype == 'P' and not self.side_to_move:
+                if r == 6:  # promote
                     # TODO implement promotion
                     pass
                 else:
                     # move forward
-                    if self.square_list[i+(1-2*color)*8, 0] == 0:
-                        moves.append((i, i+(1-2*color)*8))
+                    if self.square_list[i+8] is None:
+                        moves.append(Move(i, i+8, False))
                         # move 2 if allowed
-                        if r == 1 + 5*color and self.square_list[i+(1-2*color)*16, 0] == 0:
-                            moves.append((i, i+(1-2*color)*16))
-                            # TODO: how to pass en passant possibility?
+                        if r == 1 and self.square_list[i+16] is None:
+                            moves.append(Move(i, i+16, False))
                     # capture right
-                    if f < 7 and (self.square_list[i+9-16*color, 0] != 0 and self.square_list[i+9-16*color, 0] // 8 != color or self.en_passant_square == i+9-16*color):
-                        moves.append((i, i+9-16*color))
+                    if f < 7 and ((self.square_list[i+9] is not None and
+                                   self.square_list[i+9].color != self.side_to_move) or self.en_passant_square == i+9):
+                        moves.append(Move(i, i+9, True))
                     # capture left
-                    if f > 0 and (self.square_list[i+7-16*color, 0] != 0 and self.square_list[i+7-16*color, 0] // 8 != color or self.en_passant_square == i+7-16*color):
-                        moves.append((i, i+7-16*color))
+                    if f > 0 and ((self.square_list[i+7] is not None and
+                                   self.square_list[i+7].color != self.side_to_move) or self.en_passant_square == i+7):
+                        moves.append(Move(i, i+7, True))
+
+            # Black Pawn moves
+            if self.square_list[i].piecetype == 'p' and self.side_to_move:
+                if r == 1:  # promote
+                    # TODO implement promotion
+                    pass
+                else:
+                    # move forward
+                    if self.square_list[i-8] is None:
+                        moves.append(Move(i, i-8, False))
+                        # move 2 if allowed
+                        if r == 6 and self.square_list[i-16] is None:
+                            moves.append(Move(i, i-16, False))
+                    # capture right
+                    if f < 7 and ((self.square_list[i-7] is not None and
+                                   self.square_list[i-7].color != self.side_to_move) or self.en_passant_square == i-7):
+                        moves.append(Move(i, i-7, True))
+                    # capture left
+                    if f > 0 and ((self.square_list[i-9] is not None and
+                                   self.square_list[i-9].color != self.side_to_move) or self.en_passant_square == i-9):
+                        moves.append(Move(i, i-9, True))
+
+            # TODO: Implement other pseudo_moves
 
         return moves
 
-    def test_do_pseudolegal_move(self, frm, to):
-        move_list = self.pseudolegal_move()
+    def test_do_pseudolegal_move(self, mv):
+        move_list = self.generate_pseudolegal_moves()
 
-        if (frm, to) in move_list:
-            frm_piece = self.square_list[frm, 0]
-            self.square_list[frm, 0] = 0
-            self.square_list[to, 0] = frm_piece
+        if mv in move_list:
+            assert mv.capture == (self.square_list[mv.to] is not None or self.en_passant_square == mv.to)
 
-            if to - frm == 16:
-                self.en_passant_square = to - 8
-            if to - frm == -16:
-                self.en_passant_square = to + 8
+            # Do move
+            frm_piece = self.square_list[mv.frm]
+            self.square_list[mv.frm] = None
+            if mv.capture:
+                if self.square_list[mv.to] is not None:
+                    captured_piece = self.square_list[mv.to]
+                else:  # capture must be en passant
+                    if mv.to < 32:
+                        captured_piece = self.square_list[mv.to+8]
+                        self.square_list[mv.to+8] = None
+                    else:
+                        captured_piece = self.square_list[mv.to-8]
+                        self.square_list[mv.to-8] = None
+                self.piece_count[captured_piece.piecetype] -= 1
+                self.piece_list.remove(captured_piece)
+            self.square_list[mv.to] = frm_piece
+            frm_piece.move(mv.to)
 
-            if self.square_list[to, 0] == self.en_passant_square:
-                print("En passant!")
-                if to < 32:
-                    self.square_list[to + 8, 0] = 0
-                else:
-                    self.square_list[to - 8, 0] = 0
+            # Set en passant square if applicable
+            if frm_piece.piecetype == 'P' and mv.to - mv.frm == 16:
+                self.en_passant_square = mv.to - 8
+            elif frm_piece.piecetype == 'p' and mv.to - mv.frm == -16:
+                self.en_passant_square = mv.to + 8
+            else:
+                self.en_passant_square = None
 
             if self.side_to_move:
                 self.full_move_count += 1
+
+            if mv.capture or frm_piece.piecetype in 'Pp':
+                self.half_move_count = 0
+            else:
+                self.half_move_count += 1
 
             self.side_to_move = not self.side_to_move
 
         else:
             print("Not a pseudolegal move!")
 
-    def test_pseudolegal_move(self):
-        move_list = self.pseudolegal_move()
-        print(move_list)
-        mv = literal_eval(input("What move would you like to make? "))
-        self.test_do_pseudolegal_move(*mv)
-
     def test_random_pseudolegal_move(self):
-        move_list = self.pseudolegal_move()
+        move_list = self.generate_pseudolegal_moves()
         mv = random.sample(move_list, 1)
-        self.test_do_pseudolegal_move(*mv[0])
+        self.test_do_pseudolegal_move(mv[0])
         return mv[0]
 
 
+class Piece:
+    PIECE_TO_NAME = {'P': 'Pawn', 'N': 'Knight', 'B': 'Bishop', 'R': 'Rook', 'Q': 'Queen', 'K': 'King'}
+    COLOR_TO_NAME = {False: 'White', True: 'Black'}
+
+    def __init__(self, piecetype, position):
+        """"
+        piecetype:  Type of the piece (by FEN letter)
+        color:      Boolean (False = white, True = Black)
+        position:   The square it occupies 0-63
+        mobility:   The number of moves the piece has (including captures)
+        attack:     Lowest valued attacker (by FEN letter)
+        defend:     Lowest valued defender (by FEN letter)
+        """
+        self.piecetype = piecetype
+        self.color = piecetype.islower()
+        self.piecename = self.PIECE_TO_NAME[piecetype.upper()]
+        self.colorname = self.COLOR_TO_NAME[self.color]
+
+        self.position = position
+        self.mobility = None
+        self.attack = None
+        self.defend = None
+
+    def __str__(self):
+        return self.colorname + ' ' + self.piecename + ' on ' + BoardRep.NUM_TO_SQUARE[self.position]
+
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            return self.__dict__ == other.__dict__
+        else:
+            return False
+
+    def move(self, to):
+        self.position = to
 
 
+class Move:
+    def __init__(self, frm, to, capture=False, promotion=None):
+        self.frm = frm
+        self.to = to
+        self.capture = capture
+        self.promotion = promotion
 
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            return self.__dict__ == other.__dict__
+        else:
+            return False
+
+    def __str__(self):
+        res = BoardRep.NUM_TO_SQUARE[self.frm]
+        if self.capture:
+            res += 'x'
+        else:
+            res += '-'
+        res += BoardRep.NUM_TO_SQUARE[self.to]
+        if self.promotion is not None:
+            res+= ('=' + self.promotion.upper())
+        return res
