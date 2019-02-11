@@ -149,51 +149,111 @@ class BoardRep:
 
             r = i // 8
             f = i % 8
-            color = int(self.side_to_move)      # white = 0, black = 1
+            clr = int(self.side_to_move)      # white = 0, black = 1
 
-            # White Pawn moves
-            if self.square_list[i].piecetype == 'P' and not self.side_to_move:
-                if r == 6:  # promote
-                    # TODO implement promotion
-                    pass
-                else:
-                    # move forward
-                    if self.square_list[i+8] is None:
-                        moves.append(Move(i, i+8, False))
+            # Pawn moves
+            d = [
+                {'piece': 'P', 'f1': 8, 'f2': 16, 'f2rank': 1, 'xl': 7, 'xr': 9, 'promrank': 6, 'proms': 'QRBN'},
+                {'piece': 'p', 'f1': -8, 'f2': -16, 'f2rank': 6, 'xl': -9, 'xr': -7, 'promrank': 1, 'proms': 'qrbn'}
+            ]
+            if self.square_list[i].piecetype == d[clr]['piece']:
+                # move forward
+                if self.square_list[i+d[clr]['f1']] is None:
+                    if r == d[clr]['promrank']:
+                        for prom in d[clr]['proms']:
+                            moves.append(Move(i, i+d[clr]['f1'], False, promotion=prom))
+                    else:
+                        moves.append(Move(i, i+d[clr]['f1'], False))
                         # move 2 if allowed
-                        if r == 1 and self.square_list[i+16] is None:
-                            moves.append(Move(i, i+16, False))
-                    # capture right
-                    if f < 7 and ((self.square_list[i+9] is not None and
-                                   self.square_list[i+9].color != self.side_to_move) or self.en_passant_square == i+9):
-                        moves.append(Move(i, i+9, True))
-                    # capture left
-                    if f > 0 and ((self.square_list[i+7] is not None and
-                                   self.square_list[i+7].color != self.side_to_move) or self.en_passant_square == i+7):
-                        moves.append(Move(i, i+7, True))
+                        if r == d[clr]['f2rank'] and self.square_list[i+d[clr]['f2']] is None:
+                            moves.append(Move(i, i+d[clr]['f2'], False))
 
-            # Black Pawn moves
-            if self.square_list[i].piecetype == 'p' and self.side_to_move:
-                if r == 1:  # promote
-                    # TODO implement promotion
-                    pass
-                else:
-                    # move forward
-                    if self.square_list[i-8] is None:
-                        moves.append(Move(i, i-8, False))
-                        # move 2 if allowed
-                        if r == 6 and self.square_list[i-16] is None:
-                            moves.append(Move(i, i-16, False))
-                    # capture right
-                    if f < 7 and ((self.square_list[i-7] is not None and
-                                   self.square_list[i-7].color != self.side_to_move) or self.en_passant_square == i-7):
-                        moves.append(Move(i, i-7, True))
-                    # capture left
-                    if f > 0 and ((self.square_list[i-9] is not None and
-                                   self.square_list[i-9].color != self.side_to_move) or self.en_passant_square == i-9):
-                        moves.append(Move(i, i-9, True))
+                # capture right
+                if f < 7 and ((self.square_list[i+d[clr]['xr']] is not None
+                               and self.square_list[i+d[clr]['xr']].color != self.side_to_move)
+                              or self.en_passant_square == i+d[clr]['xr']):
+                    if r == d[clr]['promrank']:
+                        for prom in d[clr]['proms']:
+                            moves.append(Move(i, i+d[clr]['xr'], True, promotion=prom))
+                    else:
+                        moves.append(Move(i, i+d[clr]['xr'], True))
+
+                # capture left
+                if f > 0 and ((self.square_list[i + d[clr]['xl']] is not None
+                               and self.square_list[i + d[clr]['xl']].color != self.side_to_move)
+                              or self.en_passant_square == i + d[clr]['xl']):
+                    if r == d[clr]['promrank']:
+                        for prom in d[clr]['proms']:
+                            moves.append(Move(i, i + d[clr]['xl'], True, promotion=prom))
+                    else:
+                        moves.append(Move(i, i + d[clr]['xl'], True))
 
             # TODO: Implement other pseudo_moves
+
+            # Rook moves or rook-like queen moves
+            if self.square_list[i].piecetype in 'Rr'[clr] + 'Qq'[clr]:
+                # TODO: Refactor this code?
+
+                # move right
+                offset = 1
+                while f + offset < 8 and self.square_list[i + offset] is None:
+                    moves.append(Move(i, i + offset, False))
+                    offset += 1
+                if f+offset < 8 and self.square_list[i+offset].color != self.side_to_move:
+                    moves.append(Move(i, i + offset, True))
+
+                # move left
+                offset = -1
+                while f + offset >= 0 and self.square_list[i + offset] is None:
+                    moves.append(Move(i, i + offset, False))
+                    offset -= 1
+                if f + offset >= 0 and self.square_list[i + offset].color != self.side_to_move:
+                    moves.append(Move(i, i + offset, True))
+
+                # move up
+                offset = 1
+                while r + offset < 8 and self.square_list[i + 8*offset] is None:
+                    moves.append(Move(i, i + 8*offset, False))
+                    offset += 1
+                if r + offset < 8 and self.square_list[i + 8*offset].color != self.side_to_move:
+                    moves.append(Move(i, i + 8*offset, True))
+
+                # move down
+                offset = -1
+                while r + offset >= 0 and self.square_list[i + 8 * offset] is None:
+                    moves.append(Move(i, i + 8 * offset, False))
+                    offset -= 1
+                if r + offset >= 0 and self.square_list[i + 8 * offset].color != self.side_to_move:
+                    moves.append(Move(i, i + 8*offset, True))
+
+            # Bishop moves or bishop-like queen moces
+            if self.square_list[i].piecetype in 'Bb'[clr] + 'Qq'[clr]:
+                pass
+
+            # King moves -- Not Castling
+            if self.square_list[i].piecetype == 'Kk'[clr]:
+                offsets = {7, 8, 9, -1, 1, -9, -8, -7}
+                if r == 0:
+                    offsets -= {-9, -8, -7}
+                elif r == 7:
+                    offsets -= {7, 8, 9}
+                if f == 0:
+                    offsets -= {7, -1, -9}
+                if f == 7:
+                    offsets -= {9, 1, -7}
+
+                for offset in offsets:
+                    moves.append(Move(i, i + offset, self.square_list[i+offset] is not None))
+
+
+
+            # Knight moves
+            if self.square_list[i].piecetype == 'Nn'[clr]:
+                pass
+
+            # Castling moves
+            if self.square_list[i].piecetype == 'Bb'[clr]:
+                pass
 
         return moves
 
@@ -221,6 +281,15 @@ class BoardRep:
             self.square_list[mv.to] = frm_piece
             frm_piece.move(mv.to)
 
+            # Handle promotion
+            if mv.promotion is not None:
+                promotedPiece = Piece(mv.promotion, mv.to)
+                self.square_list[mv.to] = promotedPiece
+                self.piece_count[frm_piece.piecetype] -= 1
+                self.piece_count[promotedPiece.piecetype] += 1
+                self.piece_list.remove(frm_piece)
+                self.piece_list.append(promotedPiece)
+
             # Set en passant square if applicable
             if frm_piece.piecetype == 'P' and mv.to - mv.frm == 16:
                 self.en_passant_square = mv.to - 8
@@ -229,9 +298,13 @@ class BoardRep:
             else:
                 self.en_passant_square = None
 
+            # TODO: Remove castling rights if applicable
+
+            # full move count
             if self.side_to_move:
                 self.full_move_count += 1
 
+            # half move count
             if mv.capture or frm_piece.piecetype in 'Pp':
                 self.half_move_count = 0
             else:
