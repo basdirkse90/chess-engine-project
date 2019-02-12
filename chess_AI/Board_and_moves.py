@@ -39,7 +39,7 @@ class BoardRep:
 
         """
         self.side_to_move = None
-        self.castling_rights = [False]*4
+        self.castling_rights = [True]*4
         self.en_passant_square = None
         self.half_move_count = 0
         self.full_move_count = 1
@@ -143,13 +143,13 @@ class BoardRep:
 
     def generate_pseudolegal_moves(self):
         moves = []
-        for i in range(64):
-            if self.square_list[i] is None:
-                continue
+        clr = int(self.side_to_move)  # white = 0, black = 1
+
+        for moving_piece in self.piece_list:
+            i = moving_piece.position
 
             r = i // 8
             f = i % 8
-            clr = int(self.side_to_move)      # white = 0, black = 1
 
             # Pawn moves
             d = [
@@ -188,8 +188,6 @@ class BoardRep:
                     else:
                         moves.append(Move(i, i + d[clr]['xl'], True))
 
-            # TODO: Implement other pseudo_moves
-
             # Rook moves or rook-like queen moves
             if self.square_list[i].piecetype in 'Rr'[clr] + 'Qq'[clr]:
                 # TODO: Refactor this code?
@@ -226,45 +224,110 @@ class BoardRep:
                 if r + offset >= 0 and self.square_list[i + 8 * offset].color != self.side_to_move:
                     moves.append(Move(i, i + 8*offset, True))
 
-            # Bishop moves or bishop-like queen moces
+            # Bishop moves or bishop-like queen moves
             if self.square_list[i].piecetype in 'Bb'[clr] + 'Qq'[clr]:
-                pass
+                # TODO: Refactor this code?
 
-            # King moves -- Not Castling
+                # move upright
+                offset = 1
+                while f + offset < 8 and r + offset < 8 and self.square_list[i + 9*offset] is None:
+                    moves.append(Move(i, i + 9*offset, False))
+                    offset += 1
+                if f + offset < 8 and r + offset < 8 and self.square_list[i + 9*offset].color != self.side_to_move:
+                    moves.append(Move(i, i + 9*offset, True))
+
+                # move upleft
+                offset = 1
+                while f - offset >= 0 and r + offset < 8 and self.square_list[i + 7*offset] is None:
+                    moves.append(Move(i, i + 7*offset, False))
+                    offset += 1
+                if f - offset >= 0 and r + offset < 8 and self.square_list[i + 7*offset].color != self.side_to_move:
+                    moves.append(Move(i, i + 7*offset, True))
+
+                # move downright
+                offset = 1
+                while f + offset < 8 and r - offset >= 0 and self.square_list[i - 7*offset] is None:
+                    moves.append(Move(i, i - 7*offset, False))
+                    offset += 1
+                if f + offset < 8 and r - offset >= 0 and self.square_list[i - 7*offset].color != self.side_to_move:
+                    moves.append(Move(i, i - 7*offset, True))
+
+                # move downleft
+                offset = 1
+                while f - offset >= 0 and r - offset >= 0 and self.square_list[i - 9 * offset] is None:
+                    moves.append(Move(i, i - 9 * offset, False))
+                    offset += 1
+                if f - offset >= 0 and r - offset >= 0 and self.square_list[i - 9*offset].color != self.side_to_move:
+                    moves.append(Move(i, i - 9*offset, True))
+
+            # King moves -- not castling moves
             if self.square_list[i].piecetype == 'Kk'[clr]:
                 offsets = {7, 8, 9, -1, 1, -9, -8, -7}
                 if r == 0:
                     offsets -= {-9, -8, -7}
                 elif r == 7:
                     offsets -= {7, 8, 9}
+
                 if f == 0:
                     offsets -= {7, -1, -9}
-                if f == 7:
+                elif f == 7:
                     offsets -= {9, 1, -7}
 
                 for offset in offsets:
-                    moves.append(Move(i, i + offset, self.square_list[i+offset] is not None))
-
-
+                    if self.square_list[i+offset] is not None:
+                        if self.square_list[i+offset].color != self.side_to_move:
+                            moves.append(Move(i, i + offset, True))
+                    else:
+                        moves.append(Move(i, i + offset, False))
 
             # Knight moves
             if self.square_list[i].piecetype == 'Nn'[clr]:
-                pass
+                offsets = {6, 15, 17, 10, -6, -15, -17, -10}
+                if r == 0:
+                    offsets -= {-6, -15, -17, -10}
+                elif r == 1:
+                    offsets -= {-15, -17}
+                elif r == 7:
+                    offsets -= {6, 15, 17, 10}
+                elif r == 6:
+                    offsets -= {15, 17}
 
-            # Castling moves
-            if self.square_list[i].piecetype == 'Bb'[clr]:
-                pass
+                if f == 0:
+                    offsets -= {-17, -10, 6, 15}
+                elif f == 1:
+                    offsets -= {-10, 6}
+                elif f == 7:
+                    offsets -= {17, 10, -6, -15}
+                elif f == 6:
+                    offsets -= {10, -6}
+
+                for offset in offsets:
+                    if self.square_list[i+offset] is not None:
+                        if self.square_list[i+offset].color != self.side_to_move:
+                            moves.append(Move(i, i + offset, True))
+                    else:
+                        moves.append(Move(i, i + offset, False))
+
+        # Castling moves
+        if self.castling_rights[2*clr] and self.square_list[7*8*clr+5] is None and self.square_list[7*8*clr+6] is None:
+            moves.append(Move(7*8*clr + 4, 7*8*clr + 6, is_castle=True))
+
+        if self.castling_rights[2*clr+1] and all(self.square_list[7*8*clr + x] is None for x in [1, 2, 3]):
+            moves.append(Move(7*8*clr + 4, 7*8*clr + 2, is_castle=True))
+
+        for move in moves:
+            assert self.square_list[move.frm] is not None
 
         return moves
 
-    def test_do_pseudolegal_move(self, mv):
-        move_list = self.generate_pseudolegal_moves()
+    def test_do_pseudolegal_move(self, mv, move_list=None):
+        if move_list is None:
+            move_list = self.generate_pseudolegal_moves()
 
         if mv in move_list:
-            assert mv.capture == (self.square_list[mv.to] is not None or self.en_passant_square == mv.to)
+            frm_piece = self.square_list[mv.frm]
 
             # Do move
-            frm_piece = self.square_list[mv.frm]
             self.square_list[mv.frm] = None
             if mv.capture:
                 if self.square_list[mv.to] is not None:
@@ -280,6 +343,19 @@ class BoardRep:
                 self.piece_list.remove(captured_piece)
             self.square_list[mv.to] = frm_piece
             frm_piece.move(mv.to)
+
+            # Move rook if it was a castling move
+            if mv.is_castle:
+                if mv.to - mv.frm == 2:  # short castle
+                    rook = self.square_list[mv.to+1]
+                    self.square_list[mv.to + 1] = None
+                    self.square_list[mv.to-1] = rook
+                    rook.move(mv.to-1)
+                elif mv.to - mv.frm == -2:  # long castle
+                    rook = self.square_list[mv.to-2]
+                    self.square_list[mv.to-2] = None
+                    self.square_list[mv.to+1] = rook
+                    rook.move(mv.to+1)
 
             # Handle promotion
             if mv.promotion is not None:
@@ -298,14 +374,50 @@ class BoardRep:
             else:
                 self.en_passant_square = None
 
-            # TODO: Remove castling rights if applicable
+            # Remove castling rights if applicable
+            if any(self.castling_rights):  # avoid unnecessary checking
+                # After king move
+                if frm_piece.piecetype == 'K':
+                    self.castling_rights[0] = False
+                    self.castling_rights[1] = False
+                if frm_piece.piecetype == 'k':
+                    self.castling_rights[2] = False
+                    self.castling_rights[3] = False
+
+                # After rook move
+                if frm_piece.piecetype == 'R':
+                    if mv.frm == 7:
+                        self.castling_rights[0] = False
+                    elif mv.frm == 0:
+                        self.castling_rights[1] = False
+                if frm_piece.piecetype == 'r':
+                    if mv.frm == 63:
+                        self.castling_rights[2] = False
+                    elif mv.frm == 56:
+                        self.castling_rights[3] = False
+
+                # After capture
+                if mv.capture:
+                    if captured_piece.is_type('K'):
+                        self.castling_rights[0] = False
+                        self.castling_rights[1] = False
+                    if captured_piece.is_type('k'):
+                        self.castling_rights[2] = False
+                        self.castling_rights[3] = False
+                    if captured_piece.is_type('Rr'):
+                        for right, square in enumerate([7, 0, 63, 56]):
+                            if mv.to == square:
+                                self.castling_rights[right] = False
+
+
+
 
             # full move count
             if self.side_to_move:
                 self.full_move_count += 1
 
             # half move count
-            if mv.capture or frm_piece.piecetype in 'Pp':
+            if mv.capture or frm_piece.piecetype in 'Pp' or mv.is_castle:
                 self.half_move_count = 0
             else:
                 self.half_move_count += 1
@@ -317,8 +429,12 @@ class BoardRep:
 
     def test_random_pseudolegal_move(self):
         move_list = self.generate_pseudolegal_moves()
-        mv = random.sample(move_list, 1)
-        self.test_do_pseudolegal_move(mv[0])
+        caslting_moves = [move for move in move_list if move.is_castle]
+        if len(caslting_moves) > 0:
+            mv = random.sample(caslting_moves, 1)
+        else:
+            mv = random.sample(move_list, 1)
+        self.test_do_pseudolegal_move(mv[0], move_list)
         return mv[0]
 
 
@@ -357,13 +473,17 @@ class Piece:
     def move(self, to):
         self.position = to
 
+    def is_type(self, piecetype):
+        return self.piecetype in piecetype
+
 
 class Move:
-    def __init__(self, frm, to, capture=False, promotion=None):
+    def __init__(self, frm, to, capture=False, promotion=None, is_castle=False):
         self.frm = frm
         self.to = to
         self.capture = capture
         self.promotion = promotion
+        self.is_castle = is_castle
 
     def __eq__(self, other):
         if isinstance(other, self.__class__):
