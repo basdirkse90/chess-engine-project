@@ -1,8 +1,6 @@
 from chess_AI import *
 
 
-
-
 # while len(a.generate_pseudolegal_moves()) > 0 and a.half_move_count <= 100:
 #     a.test_random_pseudolegal_move()
 #     print(a)
