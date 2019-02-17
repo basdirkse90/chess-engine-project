@@ -1,4 +1,9 @@
-from chess_AI import *
+from Board_and_moves import *
+import cProfile
+
+pr = cProfile.Profile()
+pr.enable()
+# ... do something ...
 
 
 # while len(a.generate_pseudolegal_moves()) > 0 and a.half_move_count <= 100:
@@ -26,5 +31,9 @@ for i in range(50):
         print("Draw by 50-move-rule")
     print()
     print()
+
+pr.disable()
+pr.dump_stats('test.prof')
+
 
 
