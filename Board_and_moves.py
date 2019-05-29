@@ -2,6 +2,7 @@ import random
 from itertools import product
 from contextlib import suppress
 from math import ceil
+import copy
 
 
 class BoardRep:
@@ -421,12 +422,18 @@ class BoardRep:
             self.piece_count[restored_piece.piecetype] += 1
             self.piece_list.append(restored_piece)
 
-    def do_move(self, mv):
+    def is_legal_and_move(self, mv):
+        '''Will check if pseudolegal move is legal. Only checks if king is in check or castled through check
+        If legal, leaves side_to_move and en_passant_square updated already, if not settings are changed back.
+        '''
+
         move_list = self.pseudolegal_moves
 
+        # First check if even pseudolegal
         if mv not in move_list:
-            raise IllegalMoveError(mv)
+            return False
 
+        # Then do move
         moved_piece, captured_piece = self.do_pseudolegal_move(mv)
 
         # already flip side to move
@@ -454,7 +461,7 @@ class BoardRep:
                 self.en_passant_square = old_enpassant
                 self.undo_pseudolegal_move(mv)
                 move_list.remove(mv)
-                raise IllegalMoveError(mv)
+                return False
 
         if any(nxt_mv.capture == 'kK'[self.side_to_move] for nxt_mv in next_move_list):
             # undo side_to_move, en_passant and pseudo_legal move
@@ -462,9 +469,30 @@ class BoardRep:
             self.en_passant_square = old_enpassant
             self.undo_pseudolegal_move(mv)
             move_list.remove(mv)
-            raise IllegalMoveError(mv)
+            return False
 
-        # Move is legal ----------------------------------------------
+        return next_move_list, moved_piece, captured_piece, old_enpassant
+
+    def is_legal(self, mv):
+        temp = self.is_legal_and_move(mv)
+        if not temp:
+            return False
+        else:
+            _, _, _, old_enpassant = temp
+            self.side_to_move = not self.side_to_move
+            self.en_passant_square = old_enpassant
+            self.undo_pseudolegal_move(mv)
+            return True
+
+    def do_move(self, mv):
+        # Perform the move and test if it was legal
+        temp = self.is_legal_and_move(mv)
+
+        if not temp:
+            raise IllegalMoveError(mv)
+        else:
+            self.pseudolegal_moves, moved_piece, captured_piece, _ = temp
+
         # Setting the remaining board attributes after legal move!
 
         # Remove castling rights if applicable
@@ -511,9 +539,6 @@ class BoardRep:
             self.half_move_count = 0
         else:
             self.half_move_count += 1
-
-        # update pseudo_legal moves
-        self.pseudolegal_moves = next_move_list
 
         self.move_sequence.append(mv)
         self.fen_sequence.append(self.get_fen())
@@ -577,6 +602,23 @@ class BoardRep:
     def generate_random_game(self):
         while len(self.pseudolegal_moves) > 0 and self.half_move_count <= 100:
             self.test_random_move()
+
+    def perft(self, n):
+        if n == 0:
+            return 1
+
+        nodes = 0
+
+        for move in self.pseudolegal_moves:
+            try:
+                x = copy.deepcopy(self)
+                x.do_move(move)
+                nodes += x.perft(n-1)
+                del x
+            except IllegalMoveError:
+                pass
+
+        return nodes
 
 
 class Piece:
