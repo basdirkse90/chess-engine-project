@@ -422,7 +422,7 @@ class BoardRep:
             self.piece_count[restored_piece.piecetype] += 1
             self.piece_list.append(restored_piece)
 
-    def is_legal_and_move(self, mv):
+    def is_legal_and_quickmove(self, mv):
         '''Will check if pseudolegal move is legal. Only checks if king is in check or castled through check
         If legal, leaves side_to_move and en_passant_square updated already, if not settings are changed back.
         '''
@@ -473,20 +473,22 @@ class BoardRep:
 
         return next_move_list, moved_piece, captured_piece, old_enpassant
 
+    def undo_quickmove(self, move, old_enpassant):
+        self.side_to_move = not self.side_to_move
+        self.en_passant_square = old_enpassant
+        self.undo_pseudolegal_move(move)
+
     def is_legal(self, mv):
-        temp = self.is_legal_and_move(mv)
+        temp = self.is_legal_and_quickmove(mv)
         if not temp:
             return False
         else:
-            _, _, _, old_enpassant = temp
-            self.side_to_move = not self.side_to_move
-            self.en_passant_square = old_enpassant
-            self.undo_pseudolegal_move(mv)
+            self.undo_quickmove(mv, temp[3])
             return True
 
     def do_move(self, mv):
         # Perform the move and test if it was legal
-        temp = self.is_legal_and_move(mv)
+        temp = self.is_legal_and_quickmove(mv)
 
         if not temp:
             raise IllegalMoveError(mv)
@@ -610,13 +612,17 @@ class BoardRep:
         nodes = 0
 
         for move in self.pseudolegal_moves:
-            try:
-                x = copy.deepcopy(self)
-                x.do_move(move)
-                nodes += x.perft(n-1)
-                del x
-            except IllegalMoveError:
-                pass
+            temp = self.is_legal_and_quickmove(move)
+            if temp:
+                old_moves = self.pseudolegal_moves
+                self.pseudolegal_moves = temp[0]
+                add = self.perft(n-1)
+                nodes += add
+                self.undo_quickmove(move, temp[3])
+                self.pseudolegal_moves = old_moves
+
+            if n==4:
+                print(str(move) + ': ' + str(add))
 
         return nodes
 

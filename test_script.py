@@ -30,13 +30,15 @@ def run_random_games(n=50, verbose=0):
 
 
 
-pr = cProfile.Profile()
-pr.enable()
+# pr = cProfile.Profile()
+# pr.enable()
 
 # run_random_games(n=100, verbose=1)
 a = BoardRep.read_fen()
-print(a.perft(3))
+print(a.perft(4))
 
-pr.disable()
-pr.dump_stats('test.prof')
+
+
+# pr.disable()
+# pr.dump_stats('test.prof')
 
