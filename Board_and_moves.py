@@ -153,6 +153,13 @@ class BoardRep:
 
         return res
 
+    def find_move(self, frm_name, to_name, prom=None):
+        frm = self.SQUARE_TO_NUM[frm_name]
+        to = self.SQUARE_TO_NUM[to_name]
+        for move in self.pseudolegal_moves:
+            if move.frm == frm and move.to == to and move.promotion == prom:
+                return move
+
     def generate_pseudolegal_moves(self):
         moves = []
         on_move = self.side_to_move
@@ -535,8 +542,9 @@ class BoardRep:
 
     def undo_move(self, regenerate_movelist=True):
         try:
-            last_move = self.move_sequence.pop()
-            last_fen = self.fen_sequence.pop()
+            del_move = self.move_sequence.pop()
+            self.fen_sequence.pop()
+            last_fen = self.fen_sequence[-1]
         except IndexError:
             return
 
@@ -555,7 +563,7 @@ class BoardRep:
         self.side_to_move = not self.side_to_move
 
         # undo_pseudolegal_move
-        self.undo_pseudolegal_move(last_move)
+        self.undo_pseudolegal_move(del_move)
 
         # regenerate pseudo_legal moves
         if regenerate_movelist:
@@ -654,8 +662,10 @@ class BoardRep:
             # No need to increase i if the move was not legal, since it is then removed from the list
             if split:
                 k = str(move)
-                k = k[0:2] + k[3:5]
-                split_dict[k] = add
+                k2 = k[0:2] + k[3:5]
+                if len(k) > 5:
+                    k2 = k2 + k[-1].lower()
+                split_dict[k2] = add
 
         if split:
             return nodes, split_dict
