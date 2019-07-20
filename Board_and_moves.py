@@ -83,8 +83,12 @@ class BoardRep:
             board.castling_rights[i] = opt in lines[2]
 
         board.en_passant_square = cls.SQUARE_TO_NUM[lines[3]]
-        board.half_move_count = int(lines[4])
-        board.full_move_count = int(lines[5])
+        try:
+            board.half_move_count = int(lines[4])
+            board.full_move_count = int(lines[5])
+        except IndexError:
+            board.half_move_count = 0
+            board.full_move_count = 1
 
         board.pseudolegal_moves = board.generate_pseudolegal_moves()
         board.fen_sequence.append(fen)
@@ -650,6 +654,7 @@ class BoardRep:
         while i < len(self.pseudolegal_moves):
             move = self.pseudolegal_moves[i]
             temp = self.do_move(move, update_movelist=False)
+            add = None
             if temp:
                 old_moves = self.pseudolegal_moves
                 self.pseudolegal_moves = temp
@@ -660,7 +665,7 @@ class BoardRep:
                 i += 1
 
             # No need to increase i if the move was not legal, since it is then removed from the list
-            if split:
+            if split and add is not None:
                 k = str(move)
                 k2 = k[0:2] + k[3:5]
                 if len(k) > 5:

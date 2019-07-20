@@ -1,0 +1,30 @@
+{
+  "fen": "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10 ",
+  "perft": [
+    {
+      "depth": 1,
+      "nodes": 46,
+      "split": null
+    },
+    {
+      "depth": 2,
+      "nodes": 2079,
+      "split": null
+    },
+    {
+      "depth": 3,
+      "nodes": 89890,
+      "split": null
+    },
+    {
+      "depth": 4,
+      "nodes": 3894594,
+      "split": null
+    },
+    {
+      "depth": 5,
+      "nodes": 164075551,
+      "split": null
+    }
+  ]
+}

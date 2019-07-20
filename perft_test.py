@@ -1,8 +1,9 @@
 from Board_and_moves import *
 import json
+import time
 
 
-def test_fen(data, prefix="", max_nodes=200000, max_depth=6):
+def run_test(data, prefix="", max_nodes=200000, max_depth=6):
     fen = data["fen"]
     perft = data["perft"]
     print(prefix + "Testing position: " + fen)
@@ -44,12 +45,25 @@ def test_fen(data, prefix="", max_nodes=200000, max_depth=6):
                 if key in data.keys():
                     print(prefix + "Split {} failed. Computed {} = {}, should be {}. Testing position after move:".
                           format(key, key, val, split[key], failed_fen))
-                    test_fen(data[key], prefix=prefix+"\t", max_depth=depth-1)
+                    run_test(data[key], prefix=prefix + "\t", max_depth=depth - 1)
                 else:
                     print(prefix + "Split {} failed. Computed {} = {}, should be {}. Failing FEN: {}".format(
                         key, key, val, split[key], failed_fen))
 
 
-with open("perft_test/position2.json") as json_file:
-    test_fen(json.load(json_file))
+files = [
+    # "perft_test/initposition.json",
+    # "perft_test/position2.json",
+    # "perft_test/position3.json",
+    # "perft_test/position4.json",
+    "perft_test/position5.json",
+    # "perft_test/position6.json"
+]
 
+for f in files:
+    with open(f) as json_file:
+        print("Opening file: {}".format(f.split("/")[1]))
+        t1 = time.time()
+        run_test(json.load(json_file), max_nodes=500000)
+        print("Test took: {} (s)".format(time.time() - t1))
+        print()
