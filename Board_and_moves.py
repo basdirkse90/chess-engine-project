@@ -40,13 +40,13 @@ class BoardRep:
 
         """
         self.side_to_move = False
-        self.castling_rights = [True]*4
+        self.castling_rights = [True] * 4
         self.en_passant_square = None
         self.half_move_count = 0
         self.full_move_count = 1
         self.piece_list = []
         self.piece_count = {key: 0 for key in self.PIECES}
-        self.square_list = [None]*64
+        self.square_list = [None] * 64
         self.in_check = False
 
         self.pseudolegal_moves = []
@@ -63,7 +63,7 @@ class BoardRep:
             f = 0
             for piece in rank:
                 if piece in cls.PIECES:
-                    pos = r*8+f
+                    pos = r * 8 + f
                     newpiece = Piece(piecetype=piece, position=pos)
                     board.square_list[pos] = newpiece
                     board.piece_list.append(newpiece)
@@ -104,7 +104,7 @@ class BoardRep:
             for f in range(8):
                 if f == 0 and r < 7:
                     res += '\n'
-                piece = self.square_list[r*8+f]
+                piece = self.square_list[r * 8 + f]
                 if piece is None:
                     res += '. '
                 else:
@@ -122,7 +122,7 @@ class BoardRep:
         for r in range(7, -1, -1):
             number_of_empty = 0
             for f in range(0, 8):
-                piece = self.square_list[r*8+f]
+                piece = self.square_list[r * 8 + f]
                 if piece is not None:
                     if number_of_empty > 0:
                         res += str(number_of_empty)
@@ -187,42 +187,44 @@ class BoardRep:
             # Pawn moves
             if moving_piece.piecetype == pawn:
                 # move forward
-                if squares[i + 8*(-1)**clr] is None:
-                    if r == 6-5*clr:
+                if squares[i + 8 * (-1) ** clr] is None:
+                    if r == 6 - 5 * clr:
                         for prom in proms:
-                            moves.append(Move(i, i + 8*(-1)**clr, moving_piece, promotion=prom))
+                            moves.append(Move(i, i + 8 * (-1) ** clr, moving_piece, promotion=prom))
                     else:
-                        moves.append(Move(i, i + 8*(-1)**clr, moving_piece))
+                        moves.append(Move(i, i + 8 * (-1) ** clr, moving_piece))
                         # move 2 if allowed
-                        if r == 1+5*clr and squares[i + 16*(-1)**clr] is None:
-                            moves.append(Move(i, i + 16*(-1)**clr, moving_piece))
+                        if r == 1 + 5 * clr and squares[i + 16 * (-1) ** clr] is None:
+                            moves.append(Move(i, i + 16 * (-1) ** clr, moving_piece))
 
                 # capture right
-                if f < 7 and squares[i + 9-16*clr] is not None and squares[i + 9-16*clr].color != on_move:
-                    if r == 6-5*clr:
+                if f < 7 and squares[i + 9 - 16 * clr] is not None and squares[i + 9 - 16 * clr].color != on_move:
+                    if r == 6 - 5 * clr:
                         for prom in proms:
                             moves.append(
-                                Move(i, i + 9-16*clr, moving_piece,
-                                     capture=squares[i + 9-16*clr].piecetype, promotion=prom))
+                                Move(i, i + 9 - 16 * clr, moving_piece,
+                                     capture=squares[i + 9 - 16 * clr].piecetype, promotion=prom))
                     else:
-                        moves.append(Move(i, i + 9-16*clr, moving_piece, capture=squares[i + 9-16*clr].piecetype))
+                        moves.append(
+                            Move(i, i + 9 - 16 * clr, moving_piece, capture=squares[i + 9 - 16 * clr].piecetype))
 
                 # capture right en passant
-                if f < 7 and self.en_passant_square == i + 9-16*clr:
-                    moves.append(Move(i, i + 9-16*clr, moving_piece, capture='pP'[clr], is_enpassant=True))
+                if f < 7 and self.en_passant_square == i + 9 - 16 * clr:
+                    moves.append(Move(i, i + 9 - 16 * clr, moving_piece, capture='pP'[clr], is_enpassant=True))
 
                 # capture left
-                if f > 0 and squares[i + 7-16*clr] is not None and squares[i + 7-16*clr].color != on_move:
-                    if r == 6-5*clr:
+                if f > 0 and squares[i + 7 - 16 * clr] is not None and squares[i + 7 - 16 * clr].color != on_move:
+                    if r == 6 - 5 * clr:
                         for prom in proms:
-                            moves.append(Move(i, i + 7-16*clr, moving_piece,
-                                              capture=squares[i + 7-16*clr].piecetype, promotion=prom))
+                            moves.append(Move(i, i + 7 - 16 * clr, moving_piece,
+                                              capture=squares[i + 7 - 16 * clr].piecetype, promotion=prom))
                     else:
-                        moves.append(Move(i, i + 7-16*clr, moving_piece, capture=squares[i + 7-16*clr].piecetype))
+                        moves.append(
+                            Move(i, i + 7 - 16 * clr, moving_piece, capture=squares[i + 7 - 16 * clr].piecetype))
 
                 # capture left en passant
-                if f > 0 and self.en_passant_square == i + 7-16*clr:
-                    moves.append(Move(i, i + 7-16*clr, moving_piece, capture='pP'[clr], is_enpassant=True))
+                if f > 0 and self.en_passant_square == i + 7 - 16 * clr:
+                    moves.append(Move(i, i + 7 - 16 * clr, moving_piece, capture='pP'[clr], is_enpassant=True))
 
             # Rook moves or rook-like queen moves
             if moving_piece.piecetype in rooklike:
@@ -384,12 +386,12 @@ class BoardRep:
                 rook = squares[mv.to + 1]
                 squares[mv.to + 1] = None
                 squares[mv.to - 1] = rook
-                rook.move(mv.to-1)
+                rook.move(mv.to - 1)
             elif mv.to - mv.frm == -2:  # long castle
                 rook = squares[mv.to - 2]
                 squares[mv.to - 2] = None
                 squares[mv.to + 1] = rook
-                rook.move(mv.to+1)
+                rook.move(mv.to + 1)
 
         # Handle promotion
         if mv.promotion is not None:
@@ -416,15 +418,15 @@ class BoardRep:
         # Unmove castling rook
         if mv.is_castle:
             if mv.to - mv.frm == 2:  # short castle
-                rook = self.square_list[mv.to-1]
-                self.square_list[mv.to-1] = None
-                self.square_list[mv.to+1] = rook
-                rook.move(mv.to+1)
+                rook = self.square_list[mv.to - 1]
+                self.square_list[mv.to - 1] = None
+                self.square_list[mv.to + 1] = rook
+                rook.move(mv.to + 1)
             elif mv.to - mv.frm == -2:  # long castle
-                rook = self.square_list[mv.to+1]
-                self.square_list[mv.to+1] = None
-                self.square_list[mv.to-2] = rook
-                rook.move(mv.to-2)
+                rook = self.square_list[mv.to + 1]
+                self.square_list[mv.to + 1] = None
+                self.square_list[mv.to - 2] = rook
+                rook.move(mv.to - 2)
 
         to_piece = self.square_list[mv.to]
         self.square_list[mv.to] = None
@@ -436,8 +438,8 @@ class BoardRep:
                 restored_piece = Piece(mv.capture, mv.to)
                 self.square_list[mv.to] = restored_piece
             else:
-                restored_piece = Piece('pP'[self.side_to_move], mv.to-8*(-1)**self.side_to_move)
-                self.square_list[mv.to-8*(-1)**self.side_to_move] = restored_piece
+                restored_piece = Piece('pP'[self.side_to_move], mv.to - 8 * (-1) ** self.side_to_move)
+                self.square_list[mv.to - 8 * (-1) ** self.side_to_move] = restored_piece
             self.piece_count[restored_piece.piecetype] += 1
             self.piece_list.append(restored_piece)
 
@@ -465,32 +467,67 @@ class BoardRep:
         else:
             self.en_passant_square = None
 
+        # Rook capture can change castling rights and hence affect next pseudolegals (therefore update before)
+        # Remove castling rights after capture
+        old_castling = self.castling_rights
+        if any(self.castling_rights):  # avoid unnecessary checking
+            # After capture
+            if mv.capture and captured_piece.is_type('Rr'):
+                for right, square in enumerate([7, 0, 63, 56]):
+                    if mv.to == square:
+                        self.castling_rights[right] = False
+
+        # --- all updates that could affect next moves taken into account now ---
         # Generate new move list (with correct side to move and en-passant square)
         next_move_list = self.generate_pseudolegal_moves()
 
+        rollback = False
         if mv.is_castle:
-            # Can not castle through check
-            c2 = mv.to - mv.frm == 2 and any(nxt_mv.to == mv.to - 1 for nxt_mv in next_move_list)
-            c3 = mv.to - mv.frm == -2 and any(nxt_mv.to == mv.to + 1 for nxt_mv in next_move_list)
-            if c2 or c3:
-                # undo side_to_move, en_passant and pseudo_legal move
-                self.side_to_move = not self.side_to_move
-                self.en_passant_square = old_enpassant
-                self.undo_pseudolegal_move(mv)
-                move_list.remove(mv)
-                return False
+
+            # Can not castle through check (1st cond) or from check (2nd cond) [this check for non-pawn pieces only!]
+            for nxt_mv in next_move_list:
+                if nxt_mv.moving_piece_FEN in 'Pp':
+                    continue
+
+                if nxt_mv.to == mv.frm + (mv.to - mv.frm) / 2 or nxt_mv.to == mv.frm:
+                    rollback = True
+                    break
+
+            if self.side_to_move:  # Black to move
+                for j in range(1 * 8, 2 * 8):
+                    c1 = self.square_list[j] is not None and self.square_list[j].piecetype == 'p'  # Pawn on square j
+                    c2 = j != 15 and (j-7 == mv.frm + (mv.to - mv.frm) / 2 or j-7 == mv.frm)       # With right capture
+                    c3 = j !=  8 and (j-9 == mv.frm + (mv.to - mv.frm) / 2 or j-9 == mv.frm)       # With left  capture
+                    if c1 and (c2 or c3):
+                        rollback = True
+                        break
+            else:  # White to move
+                for j in range(6 * 8, 7 * 8):
+                    c1 = self.square_list[j] is not None and self.square_list[j].piecetype == 'P'  # Pawn on square j
+                    c2 = j != 55 and (j+9 == mv.frm + (mv.to - mv.frm) / 2 or j+9 == mv.frm)       # With right capture
+                    c3 = j != 48 and (j+7 == mv.frm + (mv.to - mv.frm) / 2 or j+7 == mv.frm)       # With left  capture
+                    if c1 and (c2 or c3):
+                        rollback = True
+                        break
 
         if any(nxt_mv.capture == 'kK'[self.side_to_move] for nxt_mv in next_move_list):
-            # undo side_to_move, en_passant and pseudo_legal move
+            rollback = True
+
+        if rollback:
+            # undo side_to_move, en_passant, castling rights and pseudo_legal move. Delete pseudolegal move.
             self.side_to_move = not self.side_to_move
             self.en_passant_square = old_enpassant
+            self.castling_rights = old_castling
             self.undo_pseudolegal_move(mv)
+
+            # TODO: REMOVE THIS LIST MODIFICATION. Has large impact on PERFT!
             move_list.remove(mv)
+
             return False
 
         # --- Setting the remaining board attributes after legal move!
 
-        # Remove castling rights if applicable
+        # Remove castling rights after piece has moved
         if any(self.castling_rights):  # avoid unnecessary checking
             # After king move
             if moved_piece.piecetype == 'K':
@@ -511,19 +548,6 @@ class BoardRep:
                     self.castling_rights[2] = False
                 elif mv.frm == 56:
                     self.castling_rights[3] = False
-
-            # After capture
-            if mv.capture:
-                if captured_piece.is_type('K'):
-                    self.castling_rights[0] = False
-                    self.castling_rights[1] = False
-                if captured_piece.is_type('k'):
-                    self.castling_rights[2] = False
-                    self.castling_rights[3] = False
-                if captured_piece.is_type('Rr'):
-                    for right, square in enumerate([7, 0, 63, 56]):
-                        if mv.to == square:
-                            self.castling_rights[right] = False
 
         # full move count
         if not self.side_to_move:  # side_to_move was already flipped!
@@ -587,7 +611,8 @@ class BoardRep:
 
         special_moves = []
         if special_moves_first:
-            special_moves = [move for move in move_list if move.is_castle or move.capture is not None or move.promotion is not None]
+            special_moves = [move for move in move_list if
+                             move.is_castle or move.capture is not None or move.promotion is not None]
 
         if len(special_moves) > 0:
             mv = random.sample(special_moves, 1)[0]
@@ -608,7 +633,7 @@ class BoardRep:
         move_list.sort()
         printable_moves = []
         for i, mv in enumerate(move_list):
-            printable_moves.append('{:2d}. {}\t'.format(i+1, mv))
+            printable_moves.append('{:2d}. {}\t'.format(i + 1, mv))
 
         col = ceil(len(printable_moves) / 5)
 
@@ -616,17 +641,17 @@ class BoardRep:
             res = ''
             for j in range(5):
                 with suppress(IndexError):
-                    res += printable_moves[j*col+i]
+                    res += printable_moves[j * col + i]
             print(res)
 
         while True:
             try:
                 x = input('What move would you like to make?')
-                proposed_move = move_list[int(x)-1]
+                proposed_move = move_list[int(x) - 1]
                 break
             except (ValueError, IndexError):
                 if x == 'exit':
-                    raise(KeyboardInterrupt('User aborted'))
+                    raise (KeyboardInterrupt('User aborted'))
                 print('Invalid input!')
 
         try:
@@ -643,7 +668,10 @@ class BoardRep:
 
     def perft(self, n, split=False):
         if n == 0:
-            return 1
+            if split:
+                return 1, {}
+            else:
+                return 1
 
         nodes = 0
         i = 0
@@ -658,7 +686,7 @@ class BoardRep:
             if temp:
                 old_moves = self.pseudolegal_moves
                 self.pseudolegal_moves = temp
-                add = self.perft(n-1)
+                add = self.perft(n - 1)
                 nodes += add
                 self.undo_move(regenerate_movelist=False)
                 self.pseudolegal_moves = old_moves
@@ -720,7 +748,7 @@ class Piece:
 class Move:
     def __init__(self, frm, to, moving_piece, capture=None, promotion=None, is_castle=False, is_enpassant=False):
         self.frm = frm  # int of square
-        self.to = to    # int of square
+        self.to = to  # int of square
         self.moving_piece = moving_piece  # Piece object that is supposed to move
         self.moving_piece_FEN = moving_piece.piecetype.upper()  # FEN of moved piece (for notation)
         self.capture = capture  # FEN letter of captured piece

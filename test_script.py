@@ -31,11 +31,19 @@ def run_random_games(n=50, verbose=0):
 # pr.enable()
 
 # run_random_games(n=100, verbose=1)
-a = BoardRep.read_fen("rnbqkbnr/ppppppPp/8/8/8/8/PPPPPPP1/RNBQKBNR w KQkq -")
-a.do_move(a.find_move('g7', 'h8', 'Q'))
-print(a.castling_rights)
 
+fen_list = [
+    ("4k2r/3P4/8/8/8/8/8/4K3 b k - 0 1", 5),
+    ("4k2r/4P3/8/8/8/8/8/4K3 b k - 0 1", 12),
+    ("4k2r/5P2/8/8/8/8/8/4K3 b k - 0 1", 5),
+    ("4k2r/6P1/8/8/8/8/8/4K3 b k - 0 1", 13),
+    ("4k2r/7P/8/8/8/8/8/4K3 b k - 0 1", 8),
+]
 
+for fen, val in fen_list:
+    a = BoardRep.read_fen(fen)
+    perft = a.perft(1)
+    print("FEN: {} \t\tperft(1) = {:2d}\t\tcorrect = {:2d}".format(fen, perft, val))
 
 # pr.disable()
 # pr.dump_stats('test.prof')

@@ -3,10 +3,11 @@ import json
 import time
 
 
-def run_test(data, prefix="", max_nodes=200000, max_depth=6):
+def run_test(data, prefix="", max_nodes=200000, max_depth=6, print_pos=True):
     fen = data["fen"]
     perft = data["perft"]
-    print(prefix + "Testing position: " + fen)
+    if print_pos:
+        print(prefix + "Testing position: " + fen)
 
     depth = 0
     nodes = 1
@@ -19,18 +20,26 @@ def run_test(data, prefix="", max_nodes=200000, max_depth=6):
         split = d["split"]
 
     a = BoardRep.read_fen(fen)
-    res_nodes, res_split = a.perft(depth, True)
+    res_nodes, res_split = a.perft(depth, split=True)
     if res_nodes == nodes:
         print(prefix + "Perft({}) = {} computed successfully!".format(depth, nodes))
+        return nodes
     else:
         print(prefix + "Perft({}) failed. Computed nodes = {}, should be {}.".format(depth, res_nodes, nodes))
+        # run_test(data, max_depth=depth-1, print_pos=False)
+
         if split is None:
             print(prefix + "Splits not available...")
             return
 
         # Check splits
         for key, val in res_split.items():
-            if split[key] != val:
+            try:
+                split_val = split[key]
+            except KeyError:
+                split_val = 0
+
+            if split_val != val:
                 b = BoardRep.read_fen(fen)
                 mvto = key[0:2]
                 mvfrm = key[2:4]
@@ -44,19 +53,19 @@ def run_test(data, prefix="", max_nodes=200000, max_depth=6):
 
                 if key in data.keys():
                     print(prefix + "Split {} failed. Computed {} = {}, should be {}. Testing position after move:".
-                          format(key, key, val, split[key], failed_fen))
+                          format(key, key, val, split_val, failed_fen))
                     run_test(data[key], prefix=prefix + "\t", max_depth=depth - 1)
                 else:
                     print(prefix + "Split {} failed. Computed {} = {}, should be {}. Failing FEN: {}".format(
-                        key, key, val, split[key], failed_fen))
+                        key, key, val, split_val, failed_fen))
 
 
 files = [
     # "perft_test/initposition.json",
-    # "perft_test/position2.json",
+    "perft_test/position2.json",
     # "perft_test/position3.json",
     # "perft_test/position4.json",
-    "perft_test/position5.json",
+    # "perft_test/position5.json",
     # "perft_test/position6.json"
 ]
 
@@ -64,6 +73,11 @@ for f in files:
     with open(f) as json_file:
         print("Opening file: {}".format(f.split("/")[1]))
         t1 = time.time()
-        run_test(json.load(json_file), max_nodes=500000)
-        print("Test took: {} (s)".format(time.time() - t1))
+        data = json.load(json_file)
+
+        n = run_test(data, max_nodes=5000000, max_depth=4)
+        dt = time.time() - t1
+        if n is not None:
+            print("Nps: {:.0f}".format(n/dt))
+        print("Test took: {:.2f} (s)".format(dt))
         print()
